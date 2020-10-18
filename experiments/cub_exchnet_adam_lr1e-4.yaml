@@ -1,0 +1,53 @@
+AUTO_RESUME: true
+CUDNN:
+  BENCHMARK: true
+  DETERMINISTIC: false
+  ENABLED: true
+DATA_DIR: 'datasets'
+GPUS: (0,)
+OUTPUT_DIR: 'output'
+LOG_DIR: 'logs'
+WORKERS: 24
+PRINT_FREQ: 100
+
+DATASET:
+  COLOR_RGB: true
+  DATASET: 'cub-2011'
+  DATA_FORMAT: jpg
+  FLIP: true
+  ROOT: 'dataset/CUB_200_2011'
+MODEL:
+  INIT_WEIGHTS: true
+  NAME: exchnet
+  NUM_JOINTS: 17
+  PRETRAINED: '.'
+  IMAGE_SIZE:
+  - 224
+  - 224
+LOSS:
+  USE_QUAN_LOSS: true
+TRAIN:
+  BATCH_SIZE_PER_GPU: 64
+  SHUFFLE: true
+  BEGIN_EPOCH: 0
+  END_EPOCH: 10
+  BEGIN_ITER: 0
+  END_ITER: 60
+  BEGIN_ALIGN_ITER: 25
+  OPTIMIZER: adam
+  LR: 0.0001
+  LR_FACTOR: 0.1
+  LR_STEP:
+  - 30
+  - 45
+  WD: 0.00001
+  GAMMA1: 0.99
+  GAMMA2: 0.0
+  MOMENTUM: 0.9
+  NESTEROV: false
+TEST:
+  BATCH_SIZE_PER_GPU: 64
+  MODEL_FILE: ''
+  FLIP_TEST: true
+DEBUG:
+  DEBUG: true

@@ -1,6 +1,7 @@
 import torch
 import argparse
 import adsh
+import adsh_exchnet
 
 from loguru import logger
 from data.data_loader import load_data
@@ -8,7 +9,7 @@ from data.data_loader import load_data
 
 def run():
     args = load_config()
-    logger.add('logs/{time}.log', rotation='500 MB', level='INFO')
+    logger.add('logs/' + args.info + '-{time}.log', rotation='500 MB', level='INFO')
     logger.info(args)
 
     torch.backends.cudnn.benchmark = True
@@ -22,23 +23,22 @@ def run():
         args.batch_size,
         args.num_workers,
     )
-
+    if args.arch == 'baseline':
+        net_arch = adsh
+    elif args.arch == 'exchnet':
+        net_arch = adsh_exchnet
     for code_length in args.code_length:
-        mAP = adsh.train(
-            query_dataloader,
-            retrieval_dataloader,
-            code_length,
-            args.device,
-            args.lr,
-            args.max_iter,
-            args.max_epoch,
-            args.num_samples,
-            args.batch_size,
-            args.root,
-            args.dataset,
-            args.gamma,
-            args.topk,
-        )
+        mAP = net_arch.train(query_dataloader, retrieval_dataloader, code_length, args)
+            # args.device,
+            # args.lr,
+            # args.max_iter,
+            # args.max_epoch,
+            # args.num_samples,
+            # args.batch_size,
+            # args.root,
+            # args.dataset,
+            # args.gamma,
+            # args.topk,
         logger.info('[code_length:{}][map:{:.4f}]'.format(code_length, mAP))
 
 
@@ -79,7 +79,12 @@ def load_config():
                         help='Using gpu.(default: False)')
     parser.add_argument('--gamma', default=200, type=float,
                         help='Hyper-parameter.(default: 200)')
-
+    parser.add_argument('--info', default='Trivial',
+                        help='Train info')
+    parser.add_argument('--arch', default='baseline',
+                        help='Net arch')
+    parser.add_argument('--save_ckpt', default='checkpoints/',
+                        help='result_save')
     args = parser.parse_args()
 
     # GPU

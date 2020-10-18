@@ -1,1 +1,4 @@
-dataset/*
+dataset/
+logs/
+*__pycache__/
+checkpoints/
