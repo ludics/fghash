@@ -61,6 +61,10 @@ def load_config():
                         help='Batch size.(default: 64)')
     parser.add_argument('--lr', default=1e-4, type=float,
                         help='Learning rate.(default: 1e-4)')
+    parser.add_argument('--wd', default=1e-5, type=float,
+                        help='Weight Decay.(default: 1e-5)')
+    parser.add_argument('--optim', default='Adam', type=str,
+                        help='Optimizer')
     parser.add_argument('--code-length', default='12,24,32,48', type=str,
                         help='Binary hash code length.(default: 12,24,32,48)')
     parser.add_argument('--max-iter', default=50, type=int,
@@ -85,6 +89,12 @@ def load_config():
                         help='Net arch')
     parser.add_argument('--save_ckpt', default='checkpoints/',
                         help='result_save')
+    parser.add_argument('--lr-step', default='30,45', type=str,
+                        help='lr decrease step.(default: 30,45)')
+    parser.add_argument('--align-step', default=50, type=int,
+                        help='Step of start aligning.(default: 50)')
+    parser.add_argument('--pretrain', action='store_true',
+                        help='Using image net pretrain')
     args = parser.parse_args()
 
     # GPU
@@ -95,6 +105,7 @@ def load_config():
 
     # Hash code length
     args.code_length = list(map(int, args.code_length.split(',')))
+    args.lr_step = list(map(int, args.lr_step.split(',')))
 
     return args
 

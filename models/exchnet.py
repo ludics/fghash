@@ -400,7 +400,7 @@ def exchnet_attention(att_size=4, pretrained=False, progress=True, **kwargs):
 
 
 class ExchNet(nn.Module):
-    def __init__(self, code_length=48, num_classes=200, att_size=4, feat_size=2048, pretrained=True):
+    def __init__(self, code_length=48, num_classes=200, att_size=4, feat_size=2048, device='cpu', pretrained=True):
         super(ExchNet, self).__init__()
         self.backbone = exchnet_backbone(pretrained=pretrained)
         self.refine_global = exchnet_refine(is_local=False, pretrained=pretrained)
@@ -410,13 +410,14 @@ class ExchNet(nn.Module):
             nn.Linear(feat_size * (att_size + 1), code_length), 
             nn.Tanh(),
         )
-        # self.exchanging = False
-        # self.anchor_local_f = None
-        # self.bernoulli = torch.distributions.Bernoulli(0.5)
-        self.relu = nn.ReLU(inplace=False)
+        self.exchanging = False
+        self.anchor_local_f = None
+        self.bernoulli = torch.distributions.Bernoulli(0.5)
+        self.device = device
+        # self.relu = nn.ReLU(inplace=False)
 
     
-    def forward(self, x):
+    def forward(self, x, targets):
         # backbone
         # print(x)
         out = self.backbone(x)
@@ -439,13 +440,12 @@ class ExchNet(nn.Module):
         sp_v = F.softmax(local_f_mean, dim=2)
         ch_v = F.softmax(avg_local_f, dim=2)
         # TODO: feature exchange
-        # if self.exchanging and self.training:
-        #     print(avg_local_f.shape)
-        #     batch_anchor_local_f = self.anchor_local_f[torch.argmax(targets, dim=1)]
-        #     sample = torch.where(self.bernoulli.sample([att_size]) > 0.5)[0]
-        #     avg_local_f[:,sample,:] = batch_anchor_local_f[:,sample,:]
-        #     print(avg_local_f.shape)
-            # print(avg_local_f.requires_grad)
+        if self.exchanging and self.training:
+            # print(avg_local_f.shape)
+            batch_anchor_local_f = self.anchor_local_f[targets.argmax(dim=1)]
+            mask = self.bernoulli.sample([batch_size, att_size, 1])
+            avg_local_f = avg_local_f.mul(mask) + batch_anchor_local_f.mul(1-mask)
+            # print(avg_local_f)
         # avg_local_f = self.relu(avg_local_f)
         all_f = torch.cat([avg_local_f.view(batch_size, -1), global_f], dim=1)
 
@@ -455,7 +455,7 @@ class ExchNet(nn.Module):
         # print(ret)
         return ret, sp_v, ch_v, avg_local_f
 
-def exchnet(code_length, num_classes, att_size, feat_size, pretrained=False, progress=True, **kwargs):
-    model = ExchNet(code_length, num_classes, att_size, feat_size, pretrained, **kwargs)
+def exchnet(code_length, num_classes, att_size, feat_size, device, pretrained=False, progress=True, **kwargs):
+    model = ExchNet(code_length, num_classes, att_size, feat_size, device, pretrained, **kwargs)
     return model
 

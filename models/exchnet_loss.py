@@ -68,7 +68,7 @@ class CH_Loss(nn.Module):
 
 
 class Exch_Loss(nn.Module):
-    def __init__(self, code_length, device, lambd_sp=0.1, lambd_ch=0.1, lambd_al=0.1, gamma=200, t=0.4):
+    def __init__(self, code_length, device, lambd_sp=0.1, lambd_ch=0.1, lambd_al=1.0, gamma=200, t=0.4):
         super(Exch_Loss, self).__init__()
         self.ch_loss = CH_Loss(device, t)
         self.sp_loss = SP_Loss(device)
@@ -79,6 +79,7 @@ class Exch_Loss(nn.Module):
         self.code_length = code_length
         self.aligning = False
         self.device = device
+        self.quanting = False
 
     def forward(self, F, B, S, omega, sp_v, ch_v, avg_local_f, batch_anchor_local_f):
         ch_loss = self.ch_loss(ch_v) /  F.shape[0] * self.lambd_ch
@@ -87,12 +88,14 @@ class Exch_Loss(nn.Module):
         quan_loss = ((F - B[omega, :]) ** 2).sum() / (F.shape[0] * B.shape[0]) * self.gamma / F.shape[1] * 12
         # loss = (hash_loss + self.lambd * sp_loss + self.gamma * ch_loss) / (F.shape[0] * B.shape[0])
         # loss = hash_loss + quan_loss + sp_loss + ch_loss
-        loss = hash_loss + quan_loss + sp_loss + ch_loss
+        loss = hash_loss + sp_loss + ch_loss
         if self.aligning:
             align_loss = torch.norm(avg_local_f-batch_anchor_local_f) / F.shape[0] * self.lambd_al
             loss += align_loss
         else:
             align_loss = torch.tensor([0.0]).to(self.device)
+        if self.quanting:
+            loss += quan_loss
         return loss, hash_loss, quan_loss, sp_loss, ch_loss, align_loss
 
 

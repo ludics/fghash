@@ -18,16 +18,17 @@ def train(
         query_dataloader,
         retrieval_dataloader,
         code_length,
-        device,
-        lr,
-        max_iter,
-        max_epoch,
-        num_samples,
-        batch_size,
-        root,
-        dataset,
-        gamma,
-        topk,
+        args
+        # device,
+        # lr,
+        # args.max_iter,
+        # args.max_epoch,
+        # args.num_samples,
+        # args.batch_size,
+        # args.root,
+        # dataset,
+        # args.gamma,
+        # args.topk,
 ):
     """
     Training model.
@@ -37,14 +38,14 @@ def train(
         code_length(int): Hashing code length.
         device(torch.device): GPU or CPU.
         lr(float): Learning rate.
-        max_iter(int): Number of iterations.
-        max_epoch(int): Number of epochs.
+        args.max_iter(int): Number of iterations.
+        args.max_epoch(int): Number of epochs.
         num_train(int): Number of sampling training data points.
-        batch_size(int): Batch size.
-        root(str): Path of dataset.
+        args.batch_size(int): Batch size.
+        args.root(str): Path of dataset.
         dataset(str): Dataset name.
-        gamma(float): Hyper-parameters.
-        topk(int): Topk k map.
+        args.gamma(float): Hyper-parameters.
+        args.topk(int): args.Topk k map.
 
     Returns
         mAP(float): Mean Average Precision.
@@ -54,30 +55,29 @@ def train(
     # model = resnet.resnet50(pretrained=True, num_classes=code_length).to(device)
     num_classes, att_size, feat_size =200, 4, 2048
     model = exchnet.exchnet(code_length=code_length, num_classes=num_classes, att_size=att_size, feat_size=feat_size,
-                            pretrained=True).to(device)
-    optimizer = optim.Adam(
-        model.parameters(),
-        lr=lr,
-        weight_decay=1e-5,
-    )
-    scheduler = optim.lr_scheduler.MultiStepLR(optimizer, [40, 50])
-    criterion = Exch_Loss(code_length, device)
+                            device=args.device, pretrained=args.pretrain).to(args.device)
+    if args.optim == 'SGD':
+        optimizer = optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.wd)
+    elif args.optim == 'Adam':
+        optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.wd)
+    scheduler = optim.lr_scheduler.MultiStepLR(optimizer, args.lr_step)
+    criterion = Exch_Loss(code_length, args.device, lambd_sp=1.0, lambd_ch=1.0)
 
     num_retrieval = len(retrieval_dataloader.dataset)
-    U = torch.zeros(num_samples, code_length).to(device)
-    B = torch.randn(num_retrieval, code_length).to(device)
-    # B = torch.zeros(num_retrieval, code_length).to(device)
-    retrieval_targets = retrieval_dataloader.dataset.get_onehot_targets().to(device)
-    C = torch.zeros((num_classes, att_size, feat_size)).to(device)
+    U = torch.zeros(args.num_samples, code_length).to(args.device)
+    B = torch.randn(num_retrieval, code_length).to(args.device)
+    # B = torch.zeros(num_retrieval, code_length).to(args.device)
+    retrieval_targets = retrieval_dataloader.dataset.get_onehot_targets().to(args.device)
+    C = torch.zeros((num_classes, att_size, feat_size)).to(args.device)
     start = time.time()
     best_mAP = 0
-    for it in range(max_iter):
+    for it in range(args.max_iter):
         iter_start = time.time()
         # Sample training data for cnn learning
-        train_dataloader, sample_index = sample_dataloader(retrieval_dataloader, num_samples, batch_size, root, dataset)
+        train_dataloader, sample_index = sample_dataloader(retrieval_dataloader, args.num_samples, args.batch_size, args.root, args.dataset)
 
         # Create Similarity matrix
-        train_targets = train_dataloader.dataset.get_onehot_targets().to(device)
+        train_targets = train_dataloader.dataset.get_onehot_targets().to(args.device)
         S = (train_targets @ retrieval_targets.t() > 0).float()
         S = torch.where(S == 1, torch.full_like(S, 1), torch.full_like(S, -1))
 
@@ -88,7 +88,7 @@ def train(
             AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter()
 
         # Training CNN model
-        for epoch in range(max_epoch):
+        for epoch in range(args.max_epoch):
             cnn_losses.reset()
             hash_losses.reset()
             quan_losses.reset()
@@ -96,9 +96,9 @@ def train(
             ch_losses.reset()
             align_losses.reset()
             for batch, (data, targets, index) in enumerate(train_dataloader):
-                data, targets, index = data.to(device), targets.to(device), index.to(device)
+                data, targets, index = data.to(args.device), targets.to(args.device), index.to(args.device)
                 optimizer.zero_grad()
-                F, sp_v, ch_v, avg_local_f = model(data)
+                F, sp_v, ch_v, avg_local_f = model(data, targets)
                 U[index, :] = F.data
                 batch_anchor_local_f = C[torch.argmax(targets, dim=1)]
                 cnn_loss, hash_loss, quan_loss,  sp_loss, ch_loss, align_loss = criterion(
@@ -113,58 +113,62 @@ def train(
                 cnn_loss.backward()
                 optimizer.step()
             logger.info('[epoch:{}/{}][cnn_loss:{:.6f}][h_loss:{:.6f}][q_loss:{:.6f}][s_loss:{:.4f}][c_loss:{:.4f}][a_loss:{:.4f}]'.format(
-                epoch+1, max_epoch, cnn_losses.avg, hash_losses.avg, quan_losses.avg, sp_losses.avg, ch_losses.avg, align_losses.avg))
+                epoch+1, args.max_epoch, cnn_losses.avg, hash_losses.avg, quan_losses.avg, sp_losses.avg, ch_losses.avg, align_losses.avg))
         scheduler.step()
         # Update B
-        expand_U = torch.zeros(B.shape).to(device)
+        expand_U = torch.zeros(B.shape).to(args.device)
         expand_U[sample_index, :] = U
-        # B = solve_dcc_adsh(B, U, expand_U, S, code_length, gamma)
-        B = solve_dcc_adsh(B, U, expand_U, S, code_length, gamma)
+        # B = solve_dcc_adsh(B, U, expand_U, S, code_length, args.gamma)
+        B = solve_dcc_exch(B, U, expand_U, S, code_length, args.gamma)
 
         # Update C
-        if (it + 1) >= 30:
-            criterion.aligning = True
+        if (it + 1) >= args.align_step:
+            model.exchanging = True
+            # criterion.aligning = True
             model.eval()
             with torch.no_grad():
-                C = torch.zeros((num_classes, att_size, feat_size)).to(device)
-                feat_cnt = torch.zeros((num_classes, 1, 1)).to(device)
+                C = torch.zeros((num_classes, att_size, feat_size)).to(args.device)
+                feat_cnt = torch.zeros((num_classes, 1, 1)).to(args.device)
                 for batch, (data, targets, index) in enumerate(retrieval_dataloader):
-                    data, targets, index = data.to(device), targets.to(device), index.to(device)
-                    _, _, _, avg_local_f = model(data)
+                    data, targets, index = data.to(args.device), targets.to(args.device), index.to(args.device)
+                    _, _, _, avg_local_f = model(data, targets)
                     class_idx = targets.argmax(dim=1)
                     for i in range(targets.shape[0]):
                         C[class_idx[i]] += avg_local_f[i]
                         feat_cnt[class_idx[i]] += 1
                 C /= feat_cnt
-
+                model.anchor_local_f = C
             model.train()
 
         # Total loss
-        iter_loss = calc_loss(U, B, S, code_length, sample_index, gamma)
-        # logger.debug('[iter:{}/{}][loss:{:.2f}][iter_time:{:.2f}]'.format(it+1, max_iter, iter_loss, time.time()-iter_start))
-        logger.info('[iter:{}/{}][loss:{:.6f}][iter_time:{:.2f}]'.format(it+1, max_iter, iter_loss, time.time()-iter_start))
+        iter_loss = calc_loss(U, B, S, code_length, sample_index, args.gamma)
+        # logger.debug('[iter:{}/{}][loss:{:.2f}][iter_time:{:.2f}]'.format(it+1, args.max_iter, iter_loss, time.time()-iter_start))
+        logger.info('[iter:{}/{}][loss:{:.6f}][iter_time:{:.2f}]'.format(it+1, args.max_iter, iter_loss, time.time()-iter_start))
 
         # Evaluate
-        if (it + 1) % 5 == 0:
-            query_code = generate_code(model, query_dataloader, code_length, device)
+        if (it + 1) % 2 == 0:
+            query_code = generate_code(model, query_dataloader, code_length, args.device)
             mAP = evaluate.mean_average_precision(
-                query_code.to(device),
+                query_code.to(args.device),
                 B,
-                query_dataloader.dataset.get_onehot_targets().to(device),
+                query_dataloader.dataset.get_onehot_targets().to(args.device),
                 retrieval_targets,
-                device,
-                topk,
+                args.device,
+                args.topk,
             )
             if mAP > best_mAP:
                 best_mAP = mAP
             # Save checkpoints
-                torch.save(query_code.cpu(), os.path.join('checkpoints/exchnet-cub2011-tanh', 'query_code.t'))
-                torch.save(B.cpu(), os.path.join('checkpoints/exchnet-cub2011-tanh', 'database_code.t'))
-                torch.save(query_dataloader.dataset.get_onehot_targets, os.path.join('checkpoints/exchnet-cub2011-tanh', 'query_targets.t'))
-                torch.save(retrieval_targets.cpu(), os.path.join('checkpoints/exchnet-cub2011-tanh', 'database_targets.t'))
-                torch.save(model.cpu(), os.path.join('checkpoints/exchnet-cub2011-tanh', 'model.t'))
-                model = model.to(device)
-            logger.info('[iter:{}/{}][code_length:{}][mAP:{:.5f}][best_mAP:{:.5f}]'.format(it+1, max_iter, code_length, mAP, best_mAP))
+                ret_path = os.path.join('checkpoints', args.info, str(code_length))
+                if not os.path.exists(ret_path):
+                    os.makedirs(ret_path)
+                torch.save(query_code.cpu(), os.path.join(ret_path, 'query_code.t'))
+                torch.save(B.cpu(), os.path.join(ret_path, 'database_code.t'))
+                torch.save(query_dataloader.dataset.get_onehot_targets, os.path.join(ret_path, 'query_targets.t'))
+                torch.save(retrieval_targets.cpu(), os.path.join(ret_path, 'database_targets.t'))
+                torch.save(model.cpu(), os.path.join(ret_path, 'model.t'))
+                model = model.to(args.device)
+            logger.info('[iter:{}/{}][code_length:{}][mAP:{:.5f}][best_mAP:{:.5f}]'.format(it+1, args.max_iter, code_length, mAP, best_mAP))
 
     logger.info('[Training time:{:.2f}]'.format(time.time()-start))
 
@@ -175,7 +179,7 @@ def solve_dcc_exch(B, U, expand_U, S, code_length, gamma):
     """
     Solve DCC problem.
     """
-    Q = (2 * code_length * S).t() @ U
+    Q = (code_length * S).t() @ U
 
     for bit in range(code_length):
         q = Q[:, bit]
@@ -183,7 +187,8 @@ def solve_dcc_exch(B, U, expand_U, S, code_length, gamma):
         B_prime = torch.cat((B[:, :bit], B[:, bit+1:]), dim=1)
         U_prime = torch.cat((U[:, :bit], U[:, bit+1:]), dim=1)
 
-        B[:, bit] = (B_prime @ U_prime.t() @ u.t() - q.t()).sign()
+        # B[:, bit] = (B_prime @ U_prime.t() @ u.t() - q.t()).sign()
+        B[:, bit] = (q.t() - B_prime @ U_prime.t() @ u.t()).sign()
 
     return B
 
@@ -235,7 +240,7 @@ def generate_code(model, dataloader, code_length, device):
         code = torch.zeros([N, code_length]).to(device)
         for batch, (data, targets, index) in enumerate(dataloader):
             data, targets, index = data.to(device), targets.to(device), index.to(device)
-            hash_code, _, _, _ = model(data)
+            hash_code, _, _, _ = model(data, targets)
             code[index, :] = hash_code.sign()
     model.train()
     return code

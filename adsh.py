@@ -50,13 +50,12 @@ def train(
     """
     # Initialization
     # model = alexnet.load_model(code_length).to(args.device)
-    model = resnet.resnet50(pretrained=True, num_classes=code_length).to(args.device)
-    optimizer = optim.Adam(
-        model.parameters(),
-        lr=args.lr,
-        weight_decay=1e-5,
-    )
-    scheduler = optim.lr_scheduler.MultiStepLR(optimizer, [30, 45])
+    model = resnet.resnet50(pretrained=args.pretrain, num_classes=code_length).to(args.device)
+    if args.optim == 'SGD':
+        optimizer = optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.wd)
+    elif args.optim == 'Adam':
+        optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.wd)
+    scheduler = optim.lr_scheduler.MultiStepLR(optimizer, args.lr_step)
     criterion = ADSH_Loss(code_length, args.gamma)
 
     num_retrieval = len(retrieval_dataloader.dataset)
