@@ -95,6 +95,8 @@ def load_config():
                         help='Step of start aligning.(default: 50)')
     parser.add_argument('--pretrain', action='store_true',
                         help='Using image net pretrain')
+    parser.add_argument('--quan_loss', action='store_true',
+                        help='Using quan_loss')
     args = parser.parse_args()
 
     # GPU

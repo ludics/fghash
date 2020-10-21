@@ -63,6 +63,7 @@ def train(
     scheduler = optim.lr_scheduler.MultiStepLR(optimizer, args.lr_step)
     criterion = Exch_Loss(code_length, args.device, lambd_sp=1.0, lambd_ch=1.0)
 
+    criterion.quanting = args.quan_loss
     num_retrieval = len(retrieval_dataloader.dataset)
     U = torch.zeros(args.num_samples, code_length).to(args.device)
     B = torch.randn(num_retrieval, code_length).to(args.device)
