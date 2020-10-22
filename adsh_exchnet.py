@@ -119,8 +119,10 @@ def train(
         # Update B
         expand_U = torch.zeros(B.shape).to(args.device)
         expand_U[sample_index, :] = U
-        # B = solve_dcc_adsh(B, U, expand_U, S, code_length, args.gamma)
-        B = solve_dcc_exch(B, U, expand_U, S, code_length, args.gamma)
+        if args.quan_loss:
+            B = solve_dcc_adsh(B, U, expand_U, S, code_length, args.gamma)
+        else:
+            B = solve_dcc_exch(B, U, expand_U, S, code_length, args.gamma)
 
         # Update C
         if (it + 1) >= args.align_step:

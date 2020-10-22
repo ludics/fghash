@@ -443,7 +443,7 @@ class ExchNet(nn.Module):
         if self.exchanging and self.training:
             # print(avg_local_f.shape)
             batch_anchor_local_f = self.anchor_local_f[targets.argmax(dim=1)]
-            mask = self.bernoulli.sample([batch_size, att_size, 1])
+            mask = self.bernoulli.sample([batch_size, att_size, 1]).to(self.device)
             avg_local_f = avg_local_f.mul(mask) + batch_anchor_local_f.mul(1-mask)
             # print(avg_local_f)
         # avg_local_f = self.relu(avg_local_f)
