@@ -2,3 +2,4 @@ dataset/
 logs/
 *__pycache__/
 checkpoints/
+pretrained/

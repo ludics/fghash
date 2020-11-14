@@ -53,11 +53,11 @@ def train(
     # Initialization
     # model = alexnet.load_model(code_length).to(device)
     # model = resnet.resnet50(pretrained=True, num_classes=code_length).to(device)
-    num_classes, att_size, feat_size =200, 4, 2048
+    num_classes, att_size, feat_size = args.num_classes, 4, 2048
     model = exchnet.exchnet(code_length=code_length, num_classes=num_classes, att_size=att_size, feat_size=feat_size,
                             device=args.device, pretrained=args.pretrain).to(args.device)
     if args.optim == 'SGD':
-        optimizer = optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.wd)
+        optimizer = optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.wd, momentum=args.momen, nesterov=args.nesterov)
     elif args.optim == 'Adam':
         optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.wd)
     scheduler = optim.lr_scheduler.MultiStepLR(optimizer, args.lr_step)
@@ -102,8 +102,9 @@ def train(
                 F, sp_v, ch_v, avg_local_f = model(data, targets)
                 U[index, :] = F.data
                 batch_anchor_local_f = C[torch.argmax(targets, dim=1)]
-                cnn_loss, hash_loss, quan_loss,  sp_loss, ch_loss, align_loss = criterion(
-                    F, B, S[index, :], sample_index[index], sp_v, ch_v, avg_local_f, batch_anchor_local_f)
+                # print(index)
+                cnn_loss, hash_loss, quan_loss,  sp_loss, ch_loss, align_loss = criterion(F, 
+                    B, S[index, :], sample_index[index], sp_v, ch_v, avg_local_f, batch_anchor_local_f)
                 cnn_losses.update(cnn_loss.item())
                 hash_losses.update(hash_loss.item())
                 quan_losses.update(quan_loss.item())
@@ -149,7 +150,7 @@ def train(
         logger.info('[iter:{}/{}][loss:{:.6f}][iter_time:{:.2f}]'.format(it+1, args.max_iter, iter_loss, time.time()-iter_start))
 
         # Evaluate
-        if (it + 1) % 2 == 0:
+        if (it + 1) % 1 == 0:
             query_code = generate_code(model, query_dataloader, code_length, args.device)
             mAP = evaluate.mean_average_precision(
                 query_code.to(args.device),

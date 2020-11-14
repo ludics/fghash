@@ -5,12 +5,17 @@ import time
 import models.alexnet as alexnet
 import utils.evaluate as evaluate
 import models.resnet as resnet
+import models.cls_hrnet as hrnet
 
 
 from loguru import logger
 from models.adsh_loss import ADSH_Loss
 from data.data_loader import sample_dataloader
 from utils import AverageMeter
+from utils.config import config
+from utils.config import update_config
+import torch.backends.cudnn as cudnn
+
 
 def train(
         query_dataloader,
@@ -50,9 +55,18 @@ def train(
     """
     # Initialization
     # model = alexnet.load_model(code_length).to(args.device)
-    model = resnet.resnet50(pretrained=args.pretrain, num_classes=code_length).to(args.device)
+    # model = resnet.resnet50(pretrained=args.pretrain, num_classes=code_length).to(args.device)
+
+    update_config(config, args)
+    # cudnn related setting
+    cudnn.benchmark = config.CUDNN.BENCHMARK
+    torch.backends.cudnn.deterministic = config.CUDNN.DETERMINISTIC
+    torch.backends.cudnn.enabled = config.CUDNN.ENABLED
+
+    model = hrnet.get_cls_net(config, pretrained=args.pretrain, num_classes=code_length).to(args.device)
+    # print(model)
     if args.optim == 'SGD':
-        optimizer = optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.wd, momentum=args.momen, nesterov=args.nesterov)
+        optimizer = optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.wd)
     elif args.optim == 'Adam':
         optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.wd)
     scheduler = optim.lr_scheduler.MultiStepLR(optimizer, args.lr_step)

@@ -2,14 +2,18 @@ import torch
 import argparse
 import adsh
 import adsh_exchnet
+import adsh_hr
 
 from loguru import logger
 from data.data_loader import load_data
+import os
 
 
 def run():
     args = load_config()
-    logger.add('logs/' + args.info + '-{time}.log', rotation='500 MB', level='INFO')
+    if not os.path.exists('logs/' + args.info):
+        os.makedirs('logs/' + args.info)
+    logger.add('logs/' + args.info + '/-{time}.log', rotation='500 MB', level='INFO')
     logger.info(args)
 
     torch.backends.cudnn.benchmark = True
@@ -27,6 +31,8 @@ def run():
         net_arch = adsh
     elif args.arch == 'exchnet':
         net_arch = adsh_exchnet
+    elif args.arch == 'hrnet':
+        net_arch = adsh_hr
     for code_length in args.code_length:
         mAP = net_arch.train(query_dataloader, retrieval_dataloader, code_length, args)
             # args.device,
@@ -95,8 +101,20 @@ def load_config():
                         help='Step of start aligning.(default: 50)')
     parser.add_argument('--pretrain', action='store_true',
                         help='Using image net pretrain')
-    parser.add_argument('--quan_loss', action='store_true',
+    parser.add_argument('--quan-loss', action='store_true',
                         help='Using quan_loss')
+    parser.add_argument('--lambd-sp', default=0.1, type=float,
+                        help='Hyper-parameter.(default: 1)')
+    parser.add_argument('--lambd-ch', default=0.1, type=float,
+                        help='Hyper-parameter.(default: 1)')
+    parser.add_argument('--momen', default=0.9, type=float,
+                        help='Hyper-parameter.(default: 0.9)')
+    parser.add_argument('--nesterov', action='store_true',
+                        help='Using SGD nesterov')
+    parser.add_argument('--cfg', default='experiments/cls_hrnet_w44_sgd_lr5e-2_wd1e-4_bs32_x100.yaml' , type=str,
+                        help='HRNet config')
+    parser.add_argument('--num-classes', default=200, type=int,
+                        help='Number of sampling data points.(default: 2000)')
     args = parser.parse_args()
 
     # GPU
