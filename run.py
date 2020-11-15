@@ -8,6 +8,7 @@ from loguru import logger
 from data.data_loader import load_data
 import os
 
+import hashnet
 
 def run():
     args = load_config()
@@ -19,7 +20,7 @@ def run():
     torch.backends.cudnn.benchmark = True
 
     # Load dataset
-    query_dataloader, _, retrieval_dataloader = load_data(
+    query_dataloader, train_dataloader, retrieval_dataloader = load_data(
         args.dataset,
         args.root,
         args.num_query,
@@ -33,8 +34,10 @@ def run():
         net_arch = adsh_exchnet
     elif args.arch == 'hrnet':
         net_arch = adsh_hr
+    elif args.arch == 'hashnet':
+        net_arch = hashnet
     for code_length in args.code_length:
-        mAP = net_arch.train(query_dataloader, retrieval_dataloader, code_length, args)
+        mAP = net_arch.train(query_dataloader, train_dataloader, retrieval_dataloader, code_length, args)
             # args.device,
             # args.lr,
             # args.max_iter,

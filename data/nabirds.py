@@ -109,7 +109,8 @@ class NABirds(VisionDataset):
         all_data['target'] = all_data['target'].apply(lambda x: label_map[x])
 
         train_data = all_data[all_data['is_training_img'] == 1]
-        test_data = all_data[all_data['is_training_img'] == 0]
+        test_data = all_data[all_data['is_training_img'] == 0].iloc[5001:10551, :]
+        # test_data = all_data[all_data['is_training_img'] == 0]
         class_num = len(label_map)
         # Load in the train / test split
         NABirds.QUERY_DATA = test_data['filepath'].to_numpy()
@@ -130,7 +131,6 @@ class NABirds(VisionDataset):
 
         if self.transform is not None:
             img = self.transform(img)
-        print(idx)
         return img, self.targets[idx], idx
 
 
