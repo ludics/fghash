@@ -96,6 +96,8 @@ def load_config():
                         help='Train info')
     parser.add_argument('--arch', default='baseline',
                         help='Net arch')
+    parser.add_argument('--net', default='AlexNet',
+                        help='Net arch')
     parser.add_argument('--save_ckpt', default='checkpoints/',
                         help='result_save')
     parser.add_argument('--lr-step', default='30,45', type=str,

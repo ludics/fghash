@@ -73,7 +73,7 @@ def train(
     args.num_train = len(train_loader.dataset)
     args.step_continuation = 20
 
-    model = AlexNet(code_length).to(args.device)
+    model = eval(args.net)(code_length).to(args.device)
 
     if args.optim == 'SGD':
         optimizer = optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.wd, momentum=args.momen, nesterov=args.nesterov)
@@ -108,7 +108,7 @@ def train(
 
             # print("calculating dataset binary code.......")\
             db_binary, db_label = compute_result(database_loader, model, device=device)
-            query_code = generate_code(model, test_loader, code_length, args.device)
+            # query_code = generate_code(model, test_loader, code_length, args.device)
             # mAP = evaluate.mean_average_precision(
             #     query_code.to(args.device),
             #     B,
