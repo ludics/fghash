@@ -137,7 +137,8 @@ def train(
             if mAP > best_mAP:
                 best_mAP = mAP
                 # Save checkpoints
-                ret_path = 'checkpoints/' + args.info
+                ret_path = os.path.join('checkpoints', args.info, str(code_length))
+                # ret_path = 'checkpoints/' + args.info
                 if not os.path.exists(ret_path):
                     os.makedirs(ret_path)
                 torch.save(query_code.cpu(), os.path.join(ret_path, 'query_code.t'))

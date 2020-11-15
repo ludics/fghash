@@ -73,7 +73,7 @@ def train(
     args.num_train = len(train_loader.dataset)
     args.step_continuation = 20
 
-    model = ResNet(code_length).to(args.device)
+    model = AlexNet(code_length).to(args.device)
 
     if args.optim == 'SGD':
         optimizer = optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.wd, momentum=args.momen, nesterov=args.nesterov)
@@ -88,15 +88,8 @@ def train(
     for epoch in range(args.max_epoch):
         epoch_start = time.time()
 
-        criterion.scale = (it // args.step_continuation + 1) ** 0.5
-
-        current_time = time.strftime('%H:%M:%S', time.localtime(time.time()))
-
-        logger.info("%s[%2d/%2d][%s] bit:%d, dataset:%s, scale:%.3f, training...." % (
-            args.arch, epoch + 1, args.max_epoch, current_time, code_length, args.dataset, criterion.scale), end="")
-
+        criterion.scale = (epoch // args.step_continuation + 1) ** 0.5
         model.train()
-
         losses.reset()
         for batch, (data, targets, index) in enumerate(train_loader):
             data, targets, index = data.to(args.device), targets.to(args.device), index.to(args.device)
@@ -106,8 +99,8 @@ def train(
             losses.update(loss.item())
             loss.backward()
             optimizer.step()
-
-        logger.info("\b\b\b\b\b\b\b loss:%.3f" % (losses.avg()))
+        logger.info('[epoch:{}/{}][scale:{:.3f}][loss:{:.6f}]'.format(epoch+1, args.max_epoch,
+                        criterion.scale, losses.avg))
         scheduler.step()
 
         if (epoch + 1) % 1 == 0:
@@ -129,7 +122,8 @@ def train(
             if mAP > best_mAP:
                 best_mAP = mAP
                 # Save checkpoints
-                ret_path = 'checkpoints/' + args.info
+                ret_path = os.path.join('checkpoints', args.info, str(code_length))
+                # ret_path = 'checkpoints/' + args.info
                 if not os.path.exists(ret_path):
                     os.makedirs(ret_path)
                 np.save(os.path.join(ret_path, args.dataset + "-" + str(mAP) + "-db_binary.npy"), db_binary.numpy())
