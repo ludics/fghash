@@ -124,7 +124,9 @@ def load_config():
     parser.add_argument('--cfg', default='experiments/cls_hrnet_w44_sgd_lr5e-2_wd1e-4_bs32_x100.yaml' , type=str,
                         help='HRNet config')
     parser.add_argument('--num-classes', default=200, type=int,
-                        help='Number of sampling data points.(default: 2000)')
+                        help='Number of classes.(default: 200)')
+    parser.add_argument('--val-freq', default=10, type=int,
+                        help='Number of validate frequency.(default: 10)')
     args = parser.parse_args()
 
     # GPU

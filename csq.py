@@ -14,11 +14,13 @@ from utils import AverageMeter
 from models.network import AlexNet, ResNet
 from utils.tools import compute_result, CalcTopMap
 
+import numpy as np
+
 class CSQLoss(torch.nn.Module):
     def __init__(self, args, bit):
         super(CSQLoss, self).__init__()
         self.is_single_label = args.dataset not in {"nuswide_21", "nuswide_21_m", "coco"}
-        self.hash_targets = self.get_hash_targets(args.n_class, bit).to(args.device)
+        self.hash_targets = self.get_hash_targets(args.num_classes, bit).to(args.device)
         self.multi_label_random_center = torch.randint(2, (bit,)).float().to(args.device)
         self.criterion = torch.nn.BCELoss().to(args.device)
 
@@ -131,7 +133,7 @@ def train(
                         criterion.scale, losses.avg))
         scheduler.step()
 
-        if (epoch + 1) % 1 == 0:
+        if (epoch + 1) % args.val_freq == 0:
             tst_binary, tst_label = compute_result(test_loader, model, device=device)
 
             # print("calculating dataset binary code.......")\
