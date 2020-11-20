@@ -131,8 +131,7 @@ def train(
             losses.update(loss.item())
             loss.backward()
             optimizer.step()
-        logger.info('[epoch:{}/{}][scale:{:.3f}][loss:{:.6f}]'.format(epoch+1, args.max_epoch,
-                        criterion.scale, losses.avg))
+        logger.info('[epoch:{}/{}][loss:{:.6f}]'.format(epoch+1, args.max_epoch, losses.avg))
         scheduler.step()
 
         if (epoch + 1) % args.val_freq == 0:
