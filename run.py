@@ -13,9 +13,10 @@ import csq
 
 def run():
     args = load_config()
-    if not os.path.exists('logs/' + args.info):
-        os.makedirs('logs/' + args.info)
-    logger.add('logs/' + args.info + '/-{time}.log', rotation='500 MB', level='INFO')
+    log_path = 'logs/' + args.arch + '-' + args.net + '/' + args.info
+    if not os.path.exists(log_path):
+        os.makedirs(log_path)
+    logger.add(log_path + '-{time}.log', rotation='500 MB', level='INFO')
     logger.info(args)
 
     torch.backends.cudnn.benchmark = True
