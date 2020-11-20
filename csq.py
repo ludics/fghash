@@ -6,7 +6,7 @@ import models.alexnet as alexnet
 import utils.evaluate as evaluate
 import models.resnet as resnet
 
-
+from scipy.linalg import hadamard
 from loguru import logger
 from models.adsh_loss import ADSH_Loss
 from data.data_loader import sample_dataloader
@@ -14,6 +14,7 @@ from utils import AverageMeter
 from models.network import AlexNet, ResNet
 from utils.tools import compute_result, CalcTopMap
 
+import random
 import numpy as np
 
 class CSQLoss(torch.nn.Module):
@@ -23,6 +24,7 @@ class CSQLoss(torch.nn.Module):
         self.hash_targets = self.get_hash_targets(args.num_classes, bit).to(args.device)
         self.multi_label_random_center = torch.randint(2, (bit,)).float().to(args.device)
         self.criterion = torch.nn.BCELoss().to(args.device)
+        self.lambd = args.lambd
 
     def forward(self, u, y, ind):
         u = u.tanh()
@@ -30,7 +32,7 @@ class CSQLoss(torch.nn.Module):
         center_loss = self.criterion(0.5 * (u + 1), 0.5 * (hash_center + 1))
 
         Q_loss = (u.abs() - 1).pow(2).mean()
-        return center_loss + args.lambd * Q_loss
+        return center_loss + self.lambd * Q_loss
 
     def label2center(self, y):
         if self.is_single_label:
