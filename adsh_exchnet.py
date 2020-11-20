@@ -16,6 +16,7 @@ from utils import AverageMeter
 
 def train(
         query_dataloader,
+        train_dataloader,
         retrieval_dataloader,
         code_length,
         args
@@ -128,7 +129,7 @@ def train(
         # Update C
         if (it + 1) >= args.align_step:
             model.exchanging = True
-            # criterion.aligning = True
+            criterion.aligning = True
             model.eval()
             with torch.no_grad():
                 C = torch.zeros((num_classes, att_size, feat_size)).to(args.device)

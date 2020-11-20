@@ -9,6 +9,7 @@ from data.data_loader import load_data
 import os
 
 import hashnet
+import csq
 
 def run():
     args = load_config()
@@ -36,6 +37,8 @@ def run():
         net_arch = adsh_hr
     elif args.arch == 'hashnet':
         net_arch = hashnet
+    elif args.arch == 'csq':
+        net_arch = csq
     for code_length in args.code_length:
         mAP = net_arch.train(query_dataloader, train_dataloader, retrieval_dataloader, code_length, args)
             # args.device,
@@ -111,6 +114,8 @@ def load_config():
     parser.add_argument('--lambd-sp', default=0.1, type=float,
                         help='Hyper-parameter.(default: 1)')
     parser.add_argument('--lambd-ch', default=0.1, type=float,
+                        help='Hyper-parameter.(default: 1)')
+    parser.add_argument('--lambd', default=0.1, type=float,
                         help='Hyper-parameter.(default: 1)')
     parser.add_argument('--momen', default=0.9, type=float,
                         help='Hyper-parameter.(default: 0.9)')
