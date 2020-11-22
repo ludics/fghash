@@ -13,7 +13,9 @@ from PIL import Image, ImageFile
 from data.transform import encode_onehot
 from data.transform import train_transform, query_transform
 
-def load_data(root, batch_size, num_workers):
+from data.triplet_sampler import PKSampler, PKSampler2
+
+def load_data(root, batch_size, num_workers, sampler=None):
     Cub2011.init(root)
     query_dataset = Cub2011(root, 'query', query_transform())
     train_dataset = Cub2011(root, 'train', train_transform())
@@ -25,13 +27,23 @@ def load_data(root, batch_size, num_workers):
         pin_memory=True,
         num_workers=num_workers,
     )
-    train_dataloader = DataLoader(
-        train_dataset,
-        batch_size=batch_size,
-        shuffle=True,
-        pin_memory=True,
-        num_workers=num_workers,
-    )
+    if sampler == 'PK':
+        pksampler = PKSampler2(train_dataset, 16, 5)
+        train_dataloader = DataLoader(
+            train_dataset,
+            batch_size=batch_size,
+            pin_memory=True,
+            num_workers=num_workers,
+            sampler=pksampler,
+        )
+    else:
+        train_dataloader = DataLoader(
+            train_dataset,
+            batch_size=batch_size,
+            shuffle=True,
+            pin_memory=True,
+            num_workers=num_workers,
+        )
     retrieval_dataloader = DataLoader(
         retrieval_dataset,
         batch_size=batch_size,
@@ -53,6 +65,7 @@ class Cub2011(Dataset):
         self.transform = transform
         self.loader = default_loader
 
+        self.label_to_samples = Cub2011.label_to_samples
         if mode == 'train':
             self.data = Cub2011.TRAIN_DATA
             self.targets = Cub2011.TRAIN_TARGETS
@@ -64,6 +77,7 @@ class Cub2011(Dataset):
             self.targets = Cub2011.RETRIEVAL_TARGETS
         else:
             raise ValueError(r'Invalid arguments: mode, can\'t load dataset!')
+
 
 
 
@@ -93,6 +107,11 @@ class Cub2011(Dataset):
         Cub2011.RETRIEVAL_DATA = train_data['filepath'].to_numpy()
         Cub2011.RETRIEVAL_TARGETS = encode_onehot((train_data['target'] - 1).tolist(), 200)
 
+        Cub2011.label_to_samples = {}
+        keys = (train_data['target'] - 1).tolist()
+        for key in keys:
+            Cub2011.label_to_samples[key] = list(np.where(train_data['target'] - 1 == key)[0])
+
 
     def get_onehot_targets(self):
         return torch.from_numpy(self.targets).float()
@@ -107,6 +126,7 @@ class Cub2011(Dataset):
             img = self.transform(img)
 
         return img, self.targets[idx], idx
+
 
 
 class Cub2011_UC(Dataset):

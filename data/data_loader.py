@@ -17,7 +17,7 @@ from data.transform import train_transform, encode_onehot
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
-def load_data(dataset, root, num_query, num_train, batch_size, num_workers):
+def load_data(dataset, root, num_query, num_train, batch_size, num_workers, sampler=None):
     """
     Load dataset.
 
@@ -67,10 +67,17 @@ def load_data(dataset, root, num_query, num_train, batch_size, num_workers):
                                       num_workers,
                                       )
     elif dataset == 'cub-2011':
-        query_dataloader, train_dataloader, retrieval_dataloader = cub2011.load_data(root,
-                                      batch_size,
-                                      num_workers,
-                                      )
+        if sampler == 'PK':
+            query_dataloader, train_dataloader, retrieval_dataloader = cub2011.load_data(root,
+                                        80,
+                                        num_workers,
+                                        'PK'
+                                        )
+        else:
+            query_dataloader, train_dataloader, retrieval_dataloader = cub2011.load_data(root,
+                                        batch_size,
+                                        num_workers,
+                                        )
     elif dataset == 'nabirds':
         query_dataloader, train_dataloader, retrieval_dataloader = nabirds.load_data(root,
                                       batch_size,

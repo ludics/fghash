@@ -11,6 +11,7 @@ import os
 import hashnet
 import csq
 import dch
+import cirhash
 
 def run():
     args = load_config()
@@ -23,14 +24,25 @@ def run():
     torch.backends.cudnn.benchmark = True
 
     # Load dataset
-    query_dataloader, train_dataloader, retrieval_dataloader = load_data(
-        args.dataset,
-        args.root,
-        args.num_query,
-        args.num_samples,
-        args.batch_size,
-        args.num_workers,
-    )
+    if args.pksampler:
+        query_dataloader, train_dataloader, retrieval_dataloader = load_data(
+            args.dataset,
+            args.root,
+            args.num_query,
+            args.num_samples,
+            args.batch_size,
+            args.num_workers,
+            'PK'
+        )
+    else:
+        query_dataloader, train_dataloader, retrieval_dataloader = load_data(
+            args.dataset,
+            args.root,
+            args.num_query,
+            args.num_samples,
+            args.batch_size,
+            args.num_workers
+        )
     if args.arch == 'baseline':
         net_arch = adsh
     elif args.arch == 'exchnet':
@@ -43,6 +55,8 @@ def run():
         net_arch = csq
     elif args.arch == 'dch':
         net_arch = dch
+    elif args.arch == 'cirhash':
+        net_arch = cirhash
     for code_length in args.code_length:
         mAP = net_arch.train(query_dataloader, train_dataloader, retrieval_dataloader, code_length, args)
             # args.device,
@@ -131,6 +145,13 @@ def load_config():
                         help='Number of classes.(default: 200)')
     parser.add_argument('--val-freq', default=10, type=int,
                         help='Number of validate frequency.(default: 10)')
+    parser.add_argument('--cauchy-gamma', default=20.0, type=float,
+                        help='Hyper-parameter.(default: 1)')
+    parser.add_argument('--margin', default=0.1, type=float,
+                        help='Hyper-parameter.(default: 1)')
+    parser.add_argument('--pksampler', action='store_true',
+                        help='Using image net pretrain')
+    
     args = parser.parse_args()
 
     # GPU
