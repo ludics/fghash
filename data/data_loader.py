@@ -69,7 +69,7 @@ def load_data(dataset, root, num_query, num_train, batch_size, num_workers, samp
     elif dataset == 'cub-2011':
         if sampler == 'PK':
             query_dataloader, train_dataloader, retrieval_dataloader = cub2011.load_data(root,
-                                        80,
+                                        batch_size,
                                         num_workers,
                                         'PK'
                                         )

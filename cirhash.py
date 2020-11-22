@@ -93,11 +93,11 @@ class CirHashLoss(torch.nn.Module):
         # # formula 8
         # cauchy_loss = w * (s * torch.log(d_hi_hj / self.gamma) + torch.log(1 + self.gamma / d_hi_hj))
         # formula 9
-        quantization_loss = torch.log(1 + self.d(u.abs(), self.one) / self.cauchy_gamma)
+        quant_loss = torch.log(1 + self.d(u.abs(), self.one) / self.cauchy_gamma)
         # formula 7
-        loss = cir_loss.mean() + self.lambda1 * quantization_loss.mean()
+        loss = cir_loss.mean() + self.lambda1 * quant_loss.mean()
 
-        return loss
+        return loss, cir_loss, quant_loss
 
 
 def train(
@@ -134,6 +134,8 @@ def train(
     criterion = CirHashLoss(args, code_length)
 
     losses = AverageMeter()
+    cir_losses = AverageMeter()
+    quant_losses = AverageMeter()
     start = time.time()
     best_mAP = 0
     for epoch in range(args.max_epoch):
@@ -142,15 +144,19 @@ def train(
         # criterion.scale = (epoch // args.step_continuation + 1) ** 0.5
         model.train()
         losses.reset()
+        cir_losses.reset()
+        quant_losses.reset()
         for batch, (data, targets, index) in enumerate(train_loader):
             data, targets, index = data.to(args.device), targets.to(args.device), index.to(args.device)
             optimizer.zero_grad()
             u = model(data)
-            loss = criterion(u, targets.float(), index)
+            loss, cir_loss, quant_loss = criterion(u, targets.float(), index)
             losses.update(loss.item())
+            cir_losses.update(cir_loss.item())
+            quant_losses.update(quant_loss.item())
             loss.backward()
             optimizer.step()
-        logger.info('[epoch:{}/{}][loss:{:.6f}]'.format(epoch+1, args.max_epoch, losses.avg))
+        logger.info('[epoch:{}/{}][loss:{:.6f}][cir_loss:{:.6f}][quant_loss:{:.6f}]'.format(epoch+1, args.max_epoch, losses.avg, cir_losses.avg, args.lambd * quant_losses.avg))
         scheduler.step()
 
         if (epoch + 1) % args.val_freq == 0:

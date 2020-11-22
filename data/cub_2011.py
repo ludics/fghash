@@ -28,10 +28,12 @@ def load_data(root, batch_size, num_workers, sampler=None):
         num_workers=num_workers,
     )
     if sampler == 'PK':
-        pksampler = PKSampler2(train_dataset, 16, 5)
+        p = 16
+        k = 8
+        pksampler = PKSampler2(train_dataset, p, k)
         train_dataloader = DataLoader(
             train_dataset,
-            batch_size=batch_size,
+            batch_size=p*k,
             pin_memory=True,
             num_workers=num_workers,
             sampler=pksampler,
