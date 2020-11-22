@@ -10,6 +10,7 @@ import os
 
 import hashnet
 import csq
+import dch
 
 def run():
     args = load_config()
@@ -40,6 +41,8 @@ def run():
         net_arch = hashnet
     elif args.arch == 'csq':
         net_arch = csq
+    elif args.arch == 'dch':
+        net_arch = dch
     for code_length in args.code_length:
         mAP = net_arch.train(query_dataloader, train_dataloader, retrieval_dataloader, code_length, args)
             # args.device,

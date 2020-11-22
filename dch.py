@@ -31,7 +31,7 @@ class DCHLoss(torch.nn.Module):
         # formula 6
         return (1 - cos.clamp(max=0.99)) * self.K / 2
 
-    def forward(self, u, y, ind, config):
+    def forward(self, u, y, ind):
         s = (y @ y.t() > 0).float()
 
         if (1 - s).sum() != 0 and s.sum() != 0:
