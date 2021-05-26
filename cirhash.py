@@ -65,7 +65,7 @@ class CirHashLoss(torch.nn.Module):
         self.cauchy_gamma = config.cauchy_gamma
         self.lambda1 = config.lambd
         self.K = bit
-        self.one = torch.ones((config.batch_size, bit)).to(config.device)
+        self.one = torch.ones((config.pk, bit)).to(config.device)
         self.circleloss = CircleLoss(m=config.margin, gamma=config.gamma)
 
     def d(self, hi, hj):
@@ -79,7 +79,6 @@ class CirHashLoss(torch.nn.Module):
         norm_u = nn.functional.normalize(u)
         cir_loss = self.circleloss(*convert_label_to_similarity(norm_u, y))
         # s = (y @ y.t() > 0).float()
-
         # if (1 - s).sum() != 0 and s.sum() != 0:
         #     # formula 2
         #     positive_w = s * s.numel() / s.sum()
@@ -93,11 +92,12 @@ class CirHashLoss(torch.nn.Module):
         # # formula 8
         # cauchy_loss = w * (s * torch.log(d_hi_hj / self.gamma) + torch.log(1 + self.gamma / d_hi_hj))
         # formula 9
-        quant_loss = torch.log(1 + self.d(u.abs(), self.one) / self.cauchy_gamma)
+        # quant_loss = torch.log(1 + self.d(u.abs(), self.one) / self.cauchy_gamma)
+        quant_loss = (u.abs() - self.one).abs().sum() / u.shape[0] / u.shape[1]
         # formula 7
         loss = cir_loss.mean() + self.lambda1 * quant_loss.mean()
 
-        return loss, cir_loss, quant_loss
+        return loss, cir_loss.mean(), quant_loss.mean()
 
 
 def train(
@@ -156,7 +156,7 @@ def train(
             quant_losses.update(quant_loss.item())
             loss.backward()
             optimizer.step()
-        logger.info('[epoch:{}/{}][loss:{:.6f}][cir_loss:{:.6f}][quant_loss:{:.6f}]'.format(epoch+1, args.max_epoch, losses.avg, cir_losses.avg, args.lambd * quant_losses.avg))
+        logger.info('[epoch:{}/{}][loss:{:.6f}][cir_loss:{:.6f}][quant_loss:{:.6f}]'.format(epoch+1, args.max_epoch, losses.avg, cir_losses.avg, quant_losses.avg))
         scheduler.step()
 
         if (epoch + 1) % args.val_freq == 0:

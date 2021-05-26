@@ -151,7 +151,8 @@ def load_config():
                         help='Hyper-parameter.(default: 1)')
     parser.add_argument('--pksampler', action='store_true',
                         help='Using image net pretrain')
-    
+    parser.add_argument('--pk', default=80, type=int,
+                        help='Number of epochs.(default: 3)')
     args = parser.parse_args()
 
     # GPU
